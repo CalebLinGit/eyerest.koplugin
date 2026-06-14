@@ -263,7 +263,7 @@ function EyeRest:menuItems()
         table.insert(items, {
             text_func = function()
                 local m = logic.breaksUntilLong(self.settings.break_count or 0, self:get("long_break_every"))
-                return T(_("Next deep rest after %1 break(s)"), m or 0)
+                return T(_("Next long break after %1 break(s)"), m or 0)
             end,
             enabled = false,
             separator = true,
@@ -283,7 +283,7 @@ function EyeRest:menuItems()
     -- Skip to next
     table.insert(items, {
         text = _("Skip to next"),
-        help_text = _("Start a mini break or a deep rest right now, instead of waiting for the timer."),
+        help_text = _("Start a mini break or a long break right now, instead of waiting for the timer."),
         enabled_func = function() return self.settings.enabled == true and self:isReading() end,
         sub_item_table = {
             {
@@ -292,7 +292,7 @@ function EyeRest:menuItems()
                 callback = function() self:triggerBreak("mini") end,
             },
             {
-                text = _("Deep rest"),
+                text = _("Long break"),
                 keep_menu_open = false,
                 callback = function() self:triggerBreak("long") end,
             },
@@ -407,8 +407,8 @@ function EyeRest:settingsItems()
     return {
         self:spinItem(_("Mini break interval: every %1 min"), "mini_interval_minutes", 1, 180, true),
         self:durationItem(_("Mini break duration"), "mini_duration_seconds"),
-        self:spinItem(_("Deep rest: every %1 mini breaks (0=off)"), "long_break_every", 0, 10),
-        self:durationItem(_("Deep rest duration"), "long_duration_seconds"),
+        self:spinItem(_("Long break: every %1 mini breaks (0=off)"), "long_break_every", 0, 10),
+        self:durationItem(_("Long break duration"), "long_duration_seconds"),
         {
             text = _("Strict mode"),
             help_text = _("In strict mode the break screen has no Skip / Read-more buttons; you must wait out the countdown."),
@@ -441,7 +441,7 @@ function EyeRest:settingsItems()
                 UIManager:show(InfoMessage:new{
                     text = _([[Eye Rest reminds you to rest your eyes, timed by how long you actually read — time in menus, the file browser, or while the device is asleep does not count.
 
-After each reading stretch a countdown break appears. Most are short mini breaks; every few mini breaks becomes a longer deep rest.
+After each reading stretch a countdown break appears. Most are short mini breaks; every few mini breaks is replaced by a longer long break.
 
 On a normal break you can Skip it or tap "Read a bit more" to postpone. Turn on Strict mode to make breaks unskippable. Long-press any menu item to see what it does.]]),
                 })

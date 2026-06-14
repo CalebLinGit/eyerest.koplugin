@@ -63,7 +63,7 @@ function BreakView:init()
     -- 粗轮询，但对很短的休息（按秒设置）收紧到每个阶段边界，保证 5 格都能走到
     self.poll_interval = math.max(1, math.min(POLL_INTERVAL, math.floor(self.duration / STAGES)))
 
-    local title_text = self.break_type == "long" and _("Deep rest") or _("Mini break")
+    local title_text = self.break_type == "long" and _("Long break") or _("Mini break")
     self.bar = SegBar:new{
         width = math.floor(Screen:getWidth() * 0.7),
         height = Size.item.height_default,
