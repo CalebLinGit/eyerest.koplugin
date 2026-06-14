@@ -10,6 +10,7 @@ local _ = require("gettext")
 local T = require("ffi/util").template
 local logic = require("breaklogic")
 local BreakView = require("breakview")
+local AlarmView = require("alarmview")
 
 local DEFAULTS = {
     mini_interval_minutes = 20,   -- 20-20-20 rule
@@ -18,16 +19,22 @@ local DEFAULTS = {
     long_duration_seconds = 300,
     postpone_minutes = 5,
 }
-local MORNING_HOUR = 6
 
--- seconds -> "M:SS" (or "H:MM:SS" past an hour)
-local function fmtClock(s)
+-- 剩余时间 -> 约分钟，避免 xx:xx 到底是「时:分」还是「分:秒」的歧义
+local function fmtMinLeft(s)
     s = math.floor(s)
-    local h = math.floor(s / 3600)
-    local m = math.floor((s % 3600) / 60)
+    if s < 60 then return _("<1 min") end
+    return T(_("~%1 min"), math.ceil(s / 60))
+end
+
+-- 时长 -> 人类可读，避免 0:20 / 5:00 的冒号歧义
+local function fmtDuration(s)
+    s = math.floor(s)
+    local m = math.floor(s / 60)
     local sec = s % 60
-    if h > 0 then return string.format("%d:%02d:%02d", h, m, sec) end
-    return string.format("%d:%02d", m, sec)
+    if m == 0 then return T(_("%1 s"), sec) end
+    if sec == 0 then return T(_("%1 min"), m) end
+    return T(_("%1 min %2 s"), m, sec)
 end
 
 local EyeRest = WidgetContainer:extend{
@@ -69,7 +76,6 @@ end
 -- 开始/恢复累计并调度休息触发
 function EyeRest:startCounting()
     if not self.settings.enabled then return end
-    if logic.isPaused(self.settings.paused_until, os.time()) then return end
     if self.break_active then return end
     if self.reading_start then return end
     if not self:isReading() then return end
@@ -133,24 +139,44 @@ end
 -- break_due_cb：阅读累计到 interval 时触发
 -- （注意：离开阅读/休眠会先 unschedule，故触发时必在阅读中）
 
--- ---------- 手动暂停 ----------
-function EyeRest:pauseBreaks(choice)
-    local now = os.time()
-    self.settings.paused_until = logic.pauseUntilTimestamp(now, choice, MORNING_HOUR)
-    self:pauseCounting()
-    UIManager:unschedule(self.resume_cb)
-    if self.settings.paused_until ~= logic.INDEFINITE then
-        local secs = self.settings.paused_until - now
-        if secs > 0 then UIManager:scheduleIn(secs, self.resume_cb) end
-    end
-    self:broadcastStatus()  -- 立即在状态栏显示 ⏸
+-- ---------- 睡眠定时器（一次性倒计时，独立于护眼休息）----------
+-- 存绝对 deadline（os.time 墙上时间），跨息屏/重启靠 reschedule 重排。
+function EyeRest:sleepRemaining()
+    if not self.settings.sleep_deadline then return nil end
+    return self.settings.sleep_deadline - os.time()
 end
 
-function EyeRest:resumeBreaks()
-    self.settings.paused_until = nil
-    UIManager:unschedule(self.resume_cb)
-    self:startCounting()
-    self:broadcastStatus()  -- 立即清掉 ⏸
+function EyeRest:armSleepTimer(seconds)
+    self.settings.sleep_deadline = os.time() + seconds
+    UIManager:unschedule(self.sleep_cb)
+    UIManager:scheduleIn(seconds, self.sleep_cb)
+end
+
+function EyeRest:cancelSleepTimer()
+    self.settings.sleep_deadline = nil
+    UIManager:unschedule(self.sleep_cb)
+end
+
+function EyeRest:fireSleepTimer()
+    self.settings.sleep_deadline = nil
+    UIManager:unschedule(self.sleep_cb)
+    if self.alarm_view then return end
+    self.alarm_view = AlarmView:new{
+        on_done = function() self.alarm_view = nil end,
+    }
+    UIManager:show(self.alarm_view)
+end
+
+-- 跨息屏/重启后按绝对 deadline 重排；已过期则立即触发
+function EyeRest:rescheduleSleepTimer()
+    local rem = self:sleepRemaining()
+    if rem == nil then return end
+    UIManager:unschedule(self.sleep_cb)
+    if rem <= 0 then
+        self:fireSleepTimer()
+    else
+        UIManager:scheduleIn(rem, self.sleep_cb)
+    end
 end
 
 -- ---------- 总开关 / 重置 ----------
@@ -159,11 +185,9 @@ function EyeRest:toggleEnabled()
     if self.settings.enabled then
         self.settings.elapsed_seconds = 0
         self.settings.break_count = 0
-        self.settings.paused_until = nil
         self:startCounting()
     else
         self:pauseCounting()
-        self.settings.paused_until = nil
         self.settings.elapsed_seconds = 0
         self:broadcastStatus()  -- 立即清掉状态栏内容
     end
@@ -186,13 +210,9 @@ end
 
 function EyeRest:initStatusFuncs()
     self.timer_symbol = "\u{2615}"  -- ☕ break/rest, distinct from KOReader's ⌚/⏳ time items
-    self.pause_symbol = "\u{23F8}"  -- ⏸ paused
     local function make_content(prefix)
         return function()
             if not self.settings.enabled then return end
-            if logic.isPaused(self.settings.paused_until, os.time()) then
-                return prefix .. self.pause_symbol
-            end
             if self:counting() then
                 return prefix .. self:remainingText()
             end
@@ -251,7 +271,12 @@ end
 -- ---------- 菜单 ----------
 function EyeRest:addToMainMenu(menu_items)
     menu_items.read_timer = {
-        text = _("Eye Rest"),
+        text_func = function()
+            if self.settings.enabled and self:counting() then
+                return T(_("Eye Rest (next break in %1)"), fmtMinLeft(self:remaining()))
+            end
+            return _("Eye Rest")
+        end,
         sub_item_table_func = function() return self:menuItems() end,
     }
 end
@@ -304,27 +329,18 @@ function EyeRest:menuItems()
         },
     })
 
-    -- Pause / Resume
-    local paused = logic.isPaused(self.settings.paused_until, os.time())
-    if paused then
-        table.insert(items, {
-            text = _("Resume breaks"),
-            callback = function(touchmenu) self:resumeBreaks(); if touchmenu then touchmenu:updateItems() end end,
-        })
-    else
-        table.insert(items, {
-            text = _("Pause breaks"),
-            help_text = _("Stop reminding you for a while (the status bar shows a pause mark). Breaks resume automatically when the time is up."),
-            enabled_func = function() return self.settings.enabled == true end,
-            sub_item_table = {
-                self:pauseChoice(_("30 minutes"), "30m"),
-                self:pauseChoice(_("1 hour"), "1h"),
-                self:pauseChoice(_("2 hours"), "2h"),
-                self:pauseChoice(_("Until tomorrow morning"), "until_morning"),
-                self:pauseChoice(_("Indefinitely"), "indefinitely"),
-            },
-        })
-    end
+    -- Sleep timer（一次性倒计时，独立于护眼休息）
+    table.insert(items, {
+        text_func = function()
+            local rem = self:sleepRemaining()
+            if rem and rem > 0 then
+                return T(_("Sleep timer: %1 min left"), math.ceil(rem / 60))
+            end
+            return _("Sleep timer: off")
+        end,
+        help_text = _("A one-shot countdown, separate from the eye breaks. When it runs out a full-screen reminder tells you to stop reading — useful as a bedtime limit, e.g. read for one hour then sleep."),
+        sub_item_table_func = function() return self:sleepTimerItems() end,
+    })
 
     -- Reset
     table.insert(items, {
@@ -342,21 +358,49 @@ function EyeRest:menuItems()
     return items
 end
 
-function EyeRest:pauseChoice(text, choice)
+function EyeRest:sleepTimerItems()
     return {
-        text = text,
-        keep_menu_open = false,
-        callback = function() self:pauseBreaks(choice) end,
+        {
+            text_func = function()
+                local rem = self:sleepRemaining()
+                if rem and rem > 0 then return T(_("Reminds you in %1 min"), math.ceil(rem / 60)) end
+                return _("No timer set")
+            end,
+            enabled = false,
+            separator = true,
+        },
+        {
+            text = _("Set timer…"),
+            keep_menu_open = true,
+            callback = function(touchmenu)
+                local rem = self:sleepRemaining()
+                local total = (rem and rem > 0) and rem or 3600  -- 默认 1 小时
+                UIManager:show(DateTimeWidget:new{
+                    title_text = _("Sleep timer"),
+                    info_text = _("Hours : minutes"),
+                    hour = math.floor(total / 3600),
+                    min = math.floor((total % 3600) / 60),
+                    ok_text = _("Start"),
+                    callback = function(w)
+                        local secs = (w.hour or 0) * 3600 + (w.min or 0) * 60
+                        if secs > 0 then self:armSleepTimer(secs) else self:cancelSleepTimer() end
+                        if touchmenu then touchmenu:updateItems() end
+                    end,
+                })
+            end,
+        },
+        {
+            text = _("Cancel timer"),
+            enabled_func = function() local r = self:sleepRemaining(); return r ~= nil and r > 0 end,
+            keep_menu_open = true,
+            callback = function(touchmenu) self:cancelSleepTimer(); if touchmenu then touchmenu:updateItems() end end,
+        },
     }
 end
 
 function EyeRest:statusLine()
     if not self.settings.enabled then return _("Breaks: off") end
-    if logic.isPaused(self.settings.paused_until, os.time()) then
-        if self.settings.paused_until == logic.INDEFINITE then return _("Paused") end
-        return T(_("Paused until %1"), os.date("%H:%M", self.settings.paused_until))
-    end
-    return T(_("Next break in %1"), fmtClock(self:remaining()))
+    return T(_("Next break in %1"), fmtMinLeft(self:remaining()))
 end
 
 function EyeRest:spinItem(title, key, vmin, vmax, rearm)
@@ -389,7 +433,7 @@ end
 -- 分:秒 时长设置（存为秒），用 min+sec 选择器，便于设到几十秒
 function EyeRest:durationItem(label, key)
     return {
-        text_func = function() return label .. ": " .. fmtClock(self:get(key)) end,
+        text_func = function() return label .. ": " .. fmtDuration(self:get(key)) end,
         keep_menu_open = true,
         callback = function(touchmenu)
             local total = self:get(key)
@@ -424,7 +468,6 @@ function EyeRest:settingsItems()
         self:spinItem(_("Postpone: %1 min"), "postpone_minutes", 1, 30),
         {
             text = _("Show countdown in header"),
-            help_text = _("Show '☕ in N min' (time to the next break) in the top alt status bar of CRE documents. The header must have its external content enabled: tap the top bar → Status bar → and turn on the alt status bar / external content, otherwise nothing shows."),
             checked_func = function() return self.settings.show_value_in_header == true end,
             callback = function()
                 self.settings.show_value_in_header = (not self.settings.show_value_in_header) or nil
@@ -450,7 +493,7 @@ function EyeRest:settingsItems()
 
     Read 20m  →  ☕ 20s   (mini break)
     Read 20m  →  ☕ 20s   (mini break)
-    Read 20m  →  🛋 5m    (long break)
+    Read 20m  →  ☕ 5m    (long break)
     … then repeat
 
 Time counts only while a book is open, and pauses when you close the book or the device goes to sleep.
@@ -469,22 +512,12 @@ function EyeRest:onDispatcherRegisterActions()
     Dispatcher:registerAction("eyerest_skip_mini",
         { category="none", event="EyeRestSkipMini", title=_("Reading breaks: mini break now"), general=true })
     Dispatcher:registerAction("eyerest_skip_long",
-        { category="none", event="EyeRestSkipLong", title=_("Reading breaks: long break now"), general=true })
-    Dispatcher:registerAction("eyerest_pause",
-        { category="none", event="EyeRestPause", title=_("Reading breaks: pause/resume"), general=true, separator=true })
+        { category="none", event="EyeRestSkipLong", title=_("Reading breaks: long break now"), general=true, separator=true })
 end
 
 function EyeRest:onEyeRestToggle() self:toggleEnabled(); return true end
 function EyeRest:onEyeRestSkipMini() self:triggerBreak("mini"); return true end
 function EyeRest:onEyeRestSkipLong() self:triggerBreak("long"); return true end
-function EyeRest:onEyeRestPause()
-    if logic.isPaused(self.settings.paused_until, os.time()) then
-        self:resumeBreaks()
-    else
-        self:pauseBreaks("indefinitely")
-    end
-    return true
-end
 
 -- ---------- 生命周期 ----------
 function EyeRest:init()
@@ -492,7 +525,7 @@ function EyeRest:init()
     self.reading_start = nil
     self.break_active = false
     self.break_due_cb = function() self:triggerBreak() end
-    self.resume_cb = function() self:resumeBreaks() end
+    self.sleep_cb = function() self:fireSleepTimer() end
     self.status_tick_cb = function() self:_tickStatus() end
 
     self:initStatusFuncs()
@@ -503,26 +536,14 @@ function EyeRest:init()
     self:onDispatcherRegisterActions()
 end
 
--- 手动暂停未过期则（重）排自动恢复定时器；已过期或未暂停则开始计时
-function EyeRest:resumeOrStartCounting()
-    local now = os.time()
-    if logic.isPaused(self.settings.paused_until, now) then
-        if self.settings.paused_until ~= logic.INDEFINITE then
-            UIManager:unschedule(self.resume_cb)
-            UIManager:scheduleIn(self.settings.paused_until - now, self.resume_cb)
-        end
-        return
-    end
-    self.settings.paused_until = nil
-    self:startCounting()
-end
-
 function EyeRest:onReaderReady()
-    self:resumeOrStartCounting()
+    self:startCounting()
+    self:rescheduleSleepTimer()  -- 重启/换书后按绝对 deadline 恢复睡眠定时器
 end
 
 function EyeRest:onResume()
-    self:resumeOrStartCounting()
+    self:startCounting()
+    self:rescheduleSleepTimer()  -- 唤醒后重排；睡眠期间已过点则立即提示
 end
 
 function EyeRest:onSuspend()
@@ -531,7 +552,7 @@ end
 
 function EyeRest:onCloseWidget()
     self:pauseCounting()
-    UIManager:unschedule(self.resume_cb)
+    UIManager:unschedule(self.sleep_cb)
 end
 
 return EyeRest

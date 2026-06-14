@@ -43,22 +43,5 @@ eq(L.coarseRemainingMin(181), 4, "coarse ceil")
 eq(L.coarseRemainingMin(0), 0, "coarse 0")
 eq(L.coarseRemainingMin(1), 1, "coarse 1")
 
--- pauseUntilTimestamp / isPaused
-local now = os.time{ year=2026, month=6, day=13, hour=22, min=0, sec=0 }
-eq(L.pauseUntilTimestamp(now, "30m", 6), now + 1800, "pause 30m")
-eq(L.pauseUntilTimestamp(now, "1h", 6), now + 3600, "pause 1h")
-eq(L.pauseUntilTimestamp(now, "2h", 6), now + 7200, "pause 2h")
-eq(L.pauseUntilTimestamp(now, "indefinitely", 6), L.INDEFINITE, "pause indefinite")
-local m1 = os.date("*t", L.pauseUntilTimestamp(now, "until_morning", 6))  -- 22:00 -> 次日 06:00
-eq(m1.hour, 6, "morning hour"); eq(m1.day, 14, "morning next day")
-local now2 = os.time{ year=2026, month=6, day=13, hour=3, min=0, sec=0 }
-local m2 = os.date("*t", L.pauseUntilTimestamp(now2, "until_morning", 6))  -- 03:00 -> 当日 06:00
-eq(m2.hour, 6, "morning same hour"); eq(m2.day, 13, "morning same day")
-
-eq(L.isPaused(nil, 1000), false, "isPaused nil")
-eq(L.isPaused(L.INDEFINITE, 1000), true, "isPaused indefinite")
-eq(L.isPaused(2000, 1000), true, "isPaused future")
-eq(L.isPaused(500, 1000), false, "isPaused past")
-
 print(("\n%d passed, %d failed"):format(passed, failed))
 os.exit(failed == 0 and 0 or 1)

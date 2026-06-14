@@ -1,9 +1,11 @@
-# Eye Rest
+# Eye Rest — eye-strain break reminder for KOReader
 
-A [Stretchly](https://hovancik.net/stretchly/)-style break reminder for
-[KOReader](https://github.com/koreader/koreader). It reminds you to rest your eyes with short *mini
-breaks* and periodic *long breaks*, timed by how long you actually read. An enhanced alternative to
-KOReader's built-in *Read timer*.
+Eye Rest reminds you to look up and rest your eyes while reading on
+[KOReader](https://github.com/koreader/koreader), so long sessions on a Kindle, Kobo, or other e-ink
+reader don't leave your eyes aching. It's a [Stretchly](https://hovancik.net/stretchly/)-style break
+reminder built around the **20-20-20 rule**: short *mini breaks* and periodic *long breaks*, paced by
+how long you actually read. It also adds a one-shot **sleep timer** for bedtime reading. A
+pomodoro-style, enhanced alternative to KOReader's built-in *Read timer*.
 
 ## Demo
 
@@ -22,7 +24,7 @@ Compared with the built-in *Read timer*:
 | Break UI | A dismissable message popup | A full-screen countdown that ignores stray taps |
 | Controls | — | Skip, postpone, or enforce with Strict mode |
 | Break tiers | Basic | Mini breaks + periodic long breaks |
-| Pause | — | 30 min … until morning … indefinitely |
+| Sleep timer | A wall-clock alarm | One-shot countdown → full-screen "time to sleep" reminder |
 | E-ink refreshes per break | One per second | ~5 (segmented countdown) |
 
 ## Install
@@ -58,7 +60,7 @@ Under **Tools → Eye Rest**:
 
 - **Enable breaks** — the main switch.
 - **Skip to next** — go to a mini break or long break now.
-- **Pause breaks** — for a set time, or indefinitely.
+- **Sleep timer** — a one-shot countdown (e.g. one hour); when it runs out a full-screen reminder tells you to stop reading. Independent of the eye breaks.
 - **Reset breaks** — restart the cycle.
 - **Settings:**
 
