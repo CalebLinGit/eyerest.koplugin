@@ -65,9 +65,9 @@ Under **Tools → Eye Rest**:
 | Setting | Description |
 |---------|-------------|
 | Mini break interval | Reading time between mini breaks |
-| Mini break duration | Length of a mini break |
-| Long break: every N mini breaks | Mini breaks before a deep rest (0 = off) |
-| Long break duration | Length of a deep rest |
+| Mini break duration | Length of a mini break (minutes : seconds) |
+| Deep rest: every N mini breaks | Mini breaks before a deep rest (0 = off) |
+| Deep rest duration | Length of a deep rest (minutes : seconds) |
 | Strict mode | Hide Skip / Read-more; the break must run out |
 | Postpone | How long *Read a bit more* defers a break |
 | Show countdown in header / footer | Show time-to-next-break in the status bar |

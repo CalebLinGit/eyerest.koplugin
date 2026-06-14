@@ -60,6 +60,8 @@ function BreakView:init()
     self.dimen = Screen:getSize()
     self.started = os.time()
     self.deadline = self.started + self.duration
+    -- 粗轮询，但对很短的休息（按秒设置）收紧到每个阶段边界，保证 5 格都能走到
+    self.poll_interval = math.max(1, math.min(POLL_INTERVAL, math.floor(self.duration / STAGES)))
 
     local title_text = self.break_type == "long" and _("Deep rest") or _("Mini break")
     self.bar = SegBar:new{
@@ -110,12 +112,13 @@ function BreakView:init()
 end
 
 function BreakView:_remainText(remaining)
-    return T(_("About %1 min left"), logic.coarseRemainingMin(remaining))
+    remaining = math.max(math.floor(remaining), 0)
+    return T(_("%1 left"), string.format("%d:%02d", math.floor(remaining / 60), remaining % 60))
 end
 
 function BreakView:onShow()
     UIManager:setDirty(self, "full")  -- 打开做一次全屏刷新清残影
-    UIManager:scheduleIn(POLL_INTERVAL, self._poll_cb)
+    UIManager:scheduleIn(self.poll_interval, self._poll_cb)
     return true
 end
 
@@ -132,7 +135,7 @@ function BreakView:_poll()
         self.remaining_widget:setText(self:_remainText(remaining))
         UIManager:setDirty(self, "ui")  -- 仅阶段变化时局部刷新
     end
-    UIManager:scheduleIn(POLL_INTERVAL, self._poll_cb)
+    UIManager:scheduleIn(self.poll_interval, self._poll_cb)
 end
 
 function BreakView:_finish(result)
