@@ -89,6 +89,16 @@ Everything lives under **Tools → Eye Rest** (the entry shows the next break in
 | Postpone | How long *Read a bit more* defers a break |
 | Show countdown in header / footer | Show time-to-next-break in the status bar |
 
+## Languages
+
+Eye Rest follows KOReader's interface language. Translations are bundled for:
+
+- English
+- 简体中文 (Simplified Chinese)
+- 繁體中文 (Traditional Chinese)
+
+Other languages fall back to English. All strings live in [`l10n_zh.lua`](l10n_zh.lua) — contributions for more languages are welcome.
+
 ## License
 
 Inspired by [Stretchly](https://hovancik.net/stretchly/); built on

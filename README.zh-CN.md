@@ -85,6 +85,16 @@ scp -P <端口> -i <你的密钥> -r eyerest.koplugin \
 | 推迟 | 「再读一会儿」推迟多久 |
 | 在顶栏 / 底栏显示倒计时 | 在状态栏显示距下次休息的时间 |
 
+## 支持的语言
+
+护眼提醒跟随 KOReader 的界面语言，已内置以下翻译：
+
+- English（英文）
+- 简体中文
+- 繁體中文
+
+其它语言回退到英文。所有文案都在 [`l10n_zh.lua`](l10n_zh.lua)，欢迎补充更多语言。
+
 ## 许可
 
 灵感来自 [Stretchly](https://hovancik.net/stretchly/)，基于 [KOReader](https://github.com/koreader/koreader)
