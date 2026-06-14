@@ -2,3 +2,6 @@
 .DS_Store
 ._*
 .__*
+
+# build output (clean release zip)
+dist/

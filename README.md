@@ -41,14 +41,10 @@ Compared with the built-in *Read timer*:
 
 Eye Rest is a single `eyerest.koplugin` folder placed in KOReader's `plugins/` directory.
 
-**Clone into the plugins directory:**
-
-```sh
-git clone https://github.com/CalebLinGit/eyerest.koplugin.git \
-  /path/to/koreader/plugins/eyerest.koplugin
-```
-
-Or copy the folder manually so the path is `…/koreader/plugins/eyerest.koplugin/`.
+**Download a release (recommended):** grab `eyerest.koplugin.zip` from the
+[latest release](https://github.com/CalebLinGit/eyerest.koplugin/releases/latest), unzip it, and move
+the `eyerest.koplugin` folder into KOReader's `plugins/` directory so the path is
+`…/koreader/plugins/eyerest.koplugin/`. The zip contains only the files the plugin needs.
 
 **On a Kindle / remote device** (enable KOReader's *Tools → SSH server* first):
 
@@ -56,6 +52,9 @@ Or copy the folder manually so the path is `…/koreader/plugins/eyerest.koplugi
 scp -P <port> -i <your_key> -r eyerest.koplugin \
   root@<device-ip>:/mnt/us/koreader/plugins/
 ```
+
+> Cloning the repo works too, but it also pulls in development files (`tests/`, `assets/`) that the
+> plugin doesn't need. Run `./package.sh` to produce the clean `eyerest.koplugin.zip` yourself.
 
 **Then disable the built-in Read timer** — the two share a menu slot, so run one at a time:
 
