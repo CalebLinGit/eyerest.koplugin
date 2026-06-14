@@ -18,7 +18,7 @@ Compared with the built-in *Read timer*:
 | | Read timer | Eye Rest |
 |---|---|---|
 | Setup | Alarm and/or interval, plus auto-start / stop | One *Enable breaks* switch |
-| Timing | Wall-clock, including idle time | Only active reading time (pauses in menus, file browser, and sleep) |
+| Timing | Wall-clock, including idle time | Counts only while a book is open; pauses on book close and sleep |
 | Break UI | A dismissable message popup | A full-screen countdown that ignores stray taps |
 | Controls | — | Skip, postpone, or enforce with Strict mode |
 | Break tiers | Basic | Mini breaks + periodic long breaks |

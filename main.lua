@@ -12,10 +12,10 @@ local logic = require("breaklogic")
 local BreakView = require("breakview")
 
 local DEFAULTS = {
-    mini_interval_minutes = 25,
-    mini_duration_seconds = 300,
-    long_break_every = 3,
-    long_duration_seconds = 900,
+    mini_interval_minutes = 20,   -- 20-20-20 rule
+    mini_duration_seconds = 20,
+    long_break_every = 2,         -- 2 mini breaks, then a long break
+    long_duration_seconds = 300,
     postpone_minutes = 5,
 }
 local MORNING_HOUR = 6
@@ -115,15 +115,19 @@ function EyeRest:onBreakResult(break_type, result)
     self.break_active = false
     self.timer_view = nil
     if result == "postpone" then
-        -- 不推进计数；把 elapsed 设成「只剩 postpone_minutes」，下次弹同类型
-        self.settings.elapsed_seconds = math.max(
-            self:intervalSeconds() - self:get("postpone_minutes") * 60, 0)
+        -- 不推进计数；下次同类型休息在 postpone 分钟后弹出。
+        -- 不能 clamp 到 0：当 postpone > interval 时 elapsed 需为负，
+        -- 这样 remaining = interval - elapsed 才等于完整的 postpone 时长。
+        self.settings.elapsed_seconds = self:intervalSeconds() - self:get("postpone_minutes") * 60
     else
         -- done / skip：推进循环，开始新一段
         self.settings.break_count = logic.advance(self.settings.break_count or 0, break_type)
         self.settings.elapsed_seconds = 0
     end
     self:startCounting()
+    -- 休息弹窗刚关闭，状态栏此刻仍被全屏遮挡；延到下一帧再刷，确保新的倒计时
+    -- 值真正画到可见的状态栏上（否则会停留在休息前的旧值）
+    UIManager:nextTick(function() self:broadcastStatus() end)
 end
 
 -- break_due_cb：阅读累计到 interval 时触发
@@ -173,9 +177,11 @@ function EyeRest:resetBreaks()
 end
 
 -- ---------- 状态栏 ----------
-function EyeRest:remainingHM()
+-- 纯分钟显示，避免 00:05 这种「时:分 / 分:秒」的歧义；不足一分钟显示 <1min
+function EyeRest:remainingText()
     local rem = self:remaining()
-    return math.floor(rem / 3600), math.floor((rem % 3600) / 60)
+    if rem < 60 then return _("in <1min") end
+    return T(_("in %1min"), math.ceil(rem / 60))
 end
 
 function EyeRest:initStatusFuncs()
@@ -188,8 +194,7 @@ function EyeRest:initStatusFuncs()
                 return prefix .. self.pause_symbol
             end
             if self:counting() then
-                local h, m = self:remainingHM()
-                return prefix .. string.format("%02d:%02d", h, m)
+                return prefix .. self:remainingText()
             end
         end
     end
@@ -419,6 +424,7 @@ function EyeRest:settingsItems()
         self:spinItem(_("Postpone: %1 min"), "postpone_minutes", 1, 30),
         {
             text = _("Show countdown in header"),
+            help_text = _("Show '☕ in N min' (time to the next break) in the top alt status bar of CRE documents. The header must have its external content enabled: tap the top bar → Status bar → and turn on the alt status bar / external content, otherwise nothing shows."),
             checked_func = function() return self.settings.show_value_in_header == true end,
             callback = function()
                 self.settings.show_value_in_header = (not self.settings.show_value_in_header) or nil
@@ -427,6 +433,7 @@ function EyeRest:settingsItems()
         },
         {
             text = _("Show countdown in footer"),
+            help_text = _("Show '☕ in N min' (time to the next break) in the bottom status bar. The footer must allow external content: tap the bottom bar → Status bar settings → turn on 'Show external content', otherwise nothing shows."),
             checked_func = function() return self.settings.show_value_in_footer == true end,
             callback = function()
                 self.settings.show_value_in_footer = (not self.settings.show_value_in_footer) or nil
@@ -439,9 +446,14 @@ function EyeRest:settingsItems()
             keep_menu_open = true,
             callback = function()
                 UIManager:show(InfoMessage:new{
-                    text = _([[Eye Rest reminds you to rest your eyes, timed by how long you actually read — time in menus, the file browser, or while the device is asleep does not count.
+                    text = _([[Eye Rest follows the 20-20-20 rule: every 20 minutes of reading, look about 20 feet (6 m) away for 20 seconds to relax your eyes.
 
-After each reading stretch a countdown break appears. Most are short mini breaks; every few mini breaks is replaced by a longer long break.
+    Read 20m  →  ☕ 20s   (mini break)
+    Read 20m  →  ☕ 20s   (mini break)
+    Read 20m  →  🛋 5m    (long break)
+    … then repeat
+
+Time counts only while a book is open, and pauses when you close the book or the device goes to sleep.
 
 On a normal break you can Skip it or tap "Read a bit more" to postpone. Turn on Strict mode to make breaks unskippable. Long-press any menu item to see what it does.]]),
                 })
