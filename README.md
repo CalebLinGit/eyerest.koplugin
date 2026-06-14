@@ -9,9 +9,19 @@ pomodoro-style, enhanced alternative to KOReader's built-in *Read timer*.
 
 ## Demo
 
-<!-- Add a screen recording / screenshots here. Files live in assets/. -->
+When a break is due, a full-screen countdown takes over the page — skip it, postpone it, or (in
+strict mode) just rest your eyes until it ends:
 
-_Coming soon — see [`assets/`](assets/)._
+<p align="center">
+  <img src="assets/mini-break.gif" alt="A mini break counting down over the page" width="360">
+</p>
+
+The rest of the plugin stays out of the way until then:
+
+|  |  |
+| :--: | :--: |
+| <img src="assets/status-bar.png" width="300"><br>**Status bar** — `☕ in N min` to the next break, shown in the header and footer | <img src="assets/menu.png" width="300"><br>**Menu** — enable, skip ahead, set a sleep timer, or reset; the title shows the next break inline |
+| <img src="assets/settings.png" width="300"><br>**Settings** — intervals and durations to the second, long-break cadence, strict mode, postpone | <img src="assets/sleep-timer.png" width="300"><br>**Sleep timer** — a one-shot bedtime reminder that ends the reading session |
 
 ## The difference
 
@@ -56,7 +66,11 @@ Eye Rest appears under **Tools → Eye Rest**. No KOReader files need editing.
 
 ## Usage
 
-Under **Tools → Eye Rest**:
+Everything lives under **Tools → Eye Rest** (the entry shows the next break inline):
+
+<p align="center">
+  <img src="assets/menu-entry.png" alt="Eye Rest under the Tools menu" width="360">
+</p>
 
 - **Enable breaks** — the main switch.
 - **Skip to next** — go to a mini break or long break now.
