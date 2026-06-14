@@ -6,7 +6,7 @@ local SpinWidget = require("ui/widget/spinwidget")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local time = require("ui/time")
-local _ = require("gettext")
+local _ = require("eyerest_l10n")
 local T = require("ffi/util").template
 local logic = require("breaklogic")
 local BreakView = require("breakview")
@@ -209,17 +209,20 @@ function EyeRest:remainingText()
 end
 
 function EyeRest:initStatusFuncs()
-    self.timer_symbol = "\u{2615}"  -- ☕ break/rest, distinct from KOReader's ⌚/⏳ time items
-    local function make_content(prefix)
+    local symbol = "\u{2615}"  -- ☕ break/rest, distinct from KOReader's ⌚/⏳ time items
+    -- 中文图标后置（5分钟后☕），英文前置（☕in 5min）；sep 区分 header(紧凑)/footer(留空格)
+    local function make_content(sep)
         return function()
             if not self.settings.enabled then return end
             if self:counting() then
-                return prefix .. self:remainingText()
+                local txt = self:remainingText()
+                if _.use_zh then return txt .. sep .. symbol end
+                return symbol .. sep .. txt
             end
         end
     end
-    self.additional_header_content_func = make_content(self.timer_symbol)
-    self.additional_footer_content_func = make_content(self.timer_symbol .. " ")
+    self.additional_header_content_func = make_content("")
+    self.additional_footer_content_func = make_content(" ")
 end
 
 function EyeRest:addHeaderContent()

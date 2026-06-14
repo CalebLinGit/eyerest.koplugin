@@ -10,7 +10,7 @@ local TextWidget = require("ui/widget/textwidget")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
-local _ = require("gettext")
+local _ = require("eyerest_l10n")
 local Screen = Device.screen
 
 -- 睡眠定时器到点提示：复用 BreakView 的全屏 modal 外观，但只有一个确认按钮，

@@ -13,7 +13,7 @@ local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local Widget = require("ui/widget/widget")
 local logic = require("breaklogic")
-local _ = require("gettext")
+local _ = require("eyerest_l10n")
 local T = require("ffi/util").template
 local Screen = Device.screen
 

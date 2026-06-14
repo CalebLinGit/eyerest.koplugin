@@ -1,3 +1,5 @@
+English | [简体中文](README.zh-CN.md)
+
 # Eye Rest — eye-strain break reminder for KOReader
 
 Eye Rest reminds you to look up and rest your eyes while reading on

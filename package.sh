@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 
-RUNTIME="_meta.lua main.lua breaklogic.lua breakview.lua alarmview.lua README.md LICENSE"
+RUNTIME="_meta.lua main.lua breaklogic.lua breakview.lua alarmview.lua eyerest_l10n.lua l10n_zh.lua README.md README.zh-CN.md LICENSE"
 OUT="dist"
 
 rm -rf "$OUT"
