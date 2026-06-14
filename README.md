@@ -91,4 +91,5 @@ unit-tested. Run the tests with the luajit bundled inside KOReader:
 
 ## License
 
-Add a license of your choice (KOReader itself is AGPL-3.0).
+Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](LICENSE).
+Copyright © 2026 Caleb Lin.
